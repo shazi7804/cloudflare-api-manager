@@ -1,0 +1,93 @@
+#!/bin/bash
+#
+# Program: Cloudflare_V4 API manage
+# Author: shazi
+AuthKey=""
+AuthEmail=""
+APIURI="https://api.cloudflare.com/client/v4/zones"
+
+declare -a callopts
+
+helpmsg() {
+    echo ""
+    echo "Usage: $0 [CONFIG] [ACTION]"
+    echo ""
+    echo "CONFIG:"
+    echo "-d                Set domain."
+    echo ""
+    echo "ACTION:"
+    echo "cache             remove cache everything"
+    echo "show              show information [status|dns]. (default:status)"
+    echo ""
+}
+
+call_cf() {
+    callopts+=(-H "X-Auth-Email: $AuthEmail")
+    callopts+=(-H "X-Auth-Key: $AuthKey")
+    callopts+=(-H "Content-Type: application/json")
+    curl "${APIURI}/${identifier}/${APIPATH}" "${callopts[@]}" 2>/dev/null "$@"
+}
+
+get_id() {
+    local APIPATH callheader
+    callheader+=(-X GET)
+    APIPATH="?name=$domain&status=active&page=1&per_page=20&order=status&direction=desc&match=all"
+    identifier=`call_cf | json_pp | sort | grep \"id\" \
+    | tail -1 | awk -F \" '{print $(NF-1)}'`
+}
+
+
+cache_pure(){
+    get_id
+    APIPATH="purge_cache"
+    callopts+=(-X DELETE)
+    call_cf --data {\"$1\":true} | awk -F \" '{print "cache status"$9}'
+}
+
+query(){
+    get_id
+    APIPATH=$1
+    call_cf | json_pp
+}
+
+cmd1=$1
+shift
+
+case $cmd1 in
+    -d)   
+        [ -z $1 ] && echo "Usage: option \"-d\" need set domain." && exit 0
+        domain=$1
+        shift
+        if [[ -z $1 ]]; then
+            echo "Usage: option set [cache|show]"
+        else
+            cmd2=$1
+        fi
+        
+        shift
+
+        case $cmd2 in
+            cache)
+                # clean purge everything
+                cache_pure purge_everything
+                ;;
+            show)
+                cmd3=$1
+                shift
+                case $cmd3 in
+                    status|'')
+                        # default query status
+                        query "?name=$domain&status=active&page=1&per_page=20&order=status&direction=desc&match=all"
+                        ;;
+                    dns)
+                        query "dns_records"
+                        ;;
+                esac
+                ;;
+        esac
+        ;;
+    -h|--help|*)
+        helpmsg
+        ;;
+esac
+
