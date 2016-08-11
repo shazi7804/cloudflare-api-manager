@@ -18,14 +18,14 @@ CONFIG:
 -d          Set domain.
 
 ACTION:
-cache       remove cache everything
-show        show information [status|dns]. (default:status)
+cache       remove cache everything.
+show        show information. [status|dns] (default:status)
 ```
 
 ### Example
 * clear cache everything: `cf-cli -d domain.com cache`
-* show information:     `cf-cli -d domain.com show`
-* show dns record:      `cf-cli -d domain.com show dns`
+* show information: `cf-cli -d domain.com show`
+* show dns record: `cf-cli -d domain.com show dns`
 
 ### HowTo get my CloudFlare API key?
 1. Login to your Cloudflare account.

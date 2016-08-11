@@ -2,9 +2,12 @@
 #
 # Program: Cloudflare_V4 API manage
 # Author: shazi
-AuthKey=""
-AuthEmail=""
+AuthKey="32395b2d113046ba1fee7afe960as4ddbe9ac"
+AuthEmail="user@email.com"
 APIURI="https://api.cloudflare.com/client/v4/zones"
+
+# env
+python="/usr/bin/python"
 
 declare -a callopts
 
@@ -16,8 +19,8 @@ helpmsg() {
     echo "-d                Set domain."
     echo ""
     echo "ACTION:"
-    echo "cache             remove cache everything"
-    echo "show              show information [status|dns]. (default:status)"
+    echo "cache             remove cache everything."
+    echo "show              show information. [status|dns]"
     echo ""
 }
 
@@ -32,12 +35,11 @@ get_id() {
     local APIPATH callheader
     callheader+=(-X GET)
     APIPATH="?name=$domain&status=active&page=1&per_page=20&order=status&direction=desc&match=all"
-    identifier=`call_cf | json_pp | sort | grep \"id\" \
+    identifier=`call_cf | jsoncode | sort | grep \"id\" \
     | tail -1 | awk -F \" '{print $(NF-1)}'`
 }
 
-
-cache_pure(){
+pure_cache(){
     get_id
     APIPATH="purge_cache"
     callopts+=(-X DELETE)
@@ -47,8 +49,13 @@ cache_pure(){
 query(){
     get_id
     APIPATH=$1
-    call_cf | json_pp
+    call_cf | jsoncode
 }
+
+jsoncode() {
+    $python -m json.tool
+}
+
 
 cmd1=$1
 shift
@@ -59,23 +66,27 @@ case $cmd1 in
         domain=$1
         shift
         if [[ -z $1 ]]; then
-            echo "Usage: option set [cache|show]"
+            echo -e "Commands:\n    cache, show"
         else
             cmd2=$1
+            shift
         fi
-        
-        shift
 
         case $cmd2 in
             cache)
                 # clean purge everything
-                cache_pure purge_everything
+                pure_cache purge_everything
                 ;;
             show)
-                cmd3=$1
-                shift
+                if [[ -z $1 ]]; then
+                    echo -e "Parameters:\n    status, dns"
+                else
+                    cmd3=$1
+                    shift
+                fi
+                
                 case $cmd3 in
-                    status|'')
+                    status)
                         # default query status
                         query "?name=$domain&status=active&page=1&per_page=20&order=status&direction=desc&match=all"
                         ;;
